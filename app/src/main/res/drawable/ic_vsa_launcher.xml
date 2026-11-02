@@ -4,10 +4,10 @@
     <background>
         <color android:color="#121212" />
     </background>
-    <!-- Das geflügelte Schlüsselsymbol als Vordergrund -->
+    <!-- Die Fußabdruck-Vektorgrafik als Vordergrund -->
     <foreground>
         <inset
-            android:drawable="@drawable/ic_vsa_wing_key"
-            android:inset="25%" />
+            android:drawable="@drawable/ic_steps_vsa"
+            android:inset="15%" />
     </foreground>
 </adaptive-icon>
