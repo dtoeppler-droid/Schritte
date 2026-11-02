@@ -1,0 +1,8 @@
+<resources>
+    <color name="bg">#0F1815</color>
+    <color name="ink">#E6EFEB</color>
+    <color name="mute">#8FA59D</color>
+    <color name="acc">#5BC4A5</color>
+    <color name="line">#24332E</color>
+    <color name="bar_old">#2F5247</color>
+</resources>
