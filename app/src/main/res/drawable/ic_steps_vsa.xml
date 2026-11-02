@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Fußabdruck links -->
+    <path
+        android:fillColor="#00F2FE"
+        android:pathData="M38,32c-4,0 -8,3 -8,8c0,12 4,24 10,34c2,3 5,6 8,8c2,1 4,-1 4,-3c0,-3 -2,-6 -4,-9c-4,-7 -7,-15 -7,-24c0,-3 -1,-6 -3,-6z"/>
+    
+    <!-- Fußabdruck rechts -->
+    <path
+        android:fillColor="#00F2FE"
+        android:pathData="M66,22c-4,0 -8,3 -8,8c0,12 4,24 10,34c2,3 5,6 8,8c2,1 4,-1 4,-3c0,-3 -2,-6 -4,-9c-4,-7 -7,-15 -7,-24c0,-3 -1,-6 -3,-6z"/>
+        
+    <!-- VSA Schriftzug / Akzent -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,78l3,-8h4l3,8h-2l-1,-3h-4l-1,3h-2z M67,78l-3,-8h2l2,6l2,-6h2l2,6l2,-6h2l-3,8h-2l-2,-6l-2,6h-2z M79,78v-8h6v2h-4v1h3v2h-3v1h4v2h-6z"/>
+</vector>
