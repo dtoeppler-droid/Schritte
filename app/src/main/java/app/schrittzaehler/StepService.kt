@@ -57,6 +57,7 @@ class StepService : Service(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent) {
         Store.onSensor(this, event.values[0])
         nm.notify(1, build(Store.stepsOn(this, LocalDate.now())))
+        StepWidget.refresh(this)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}

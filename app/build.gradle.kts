@@ -11,8 +11,24 @@ android {
         applicationId = "app.schrittzaehler"
         minSdk = 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
+    }
+
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("schrittzaehler.keystore")
+            storePassword = "schritte123"
+            keyAlias = "schritt"
+            keyPassword = "schritte123"
+            storeType = "pkcs12"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("fixed")
+        }
     }
 
     compileOptions {

@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import java.time.LocalDate
 
 object Store {
-    const val STRIDE_M = 0.75
 
     fun prefs(c: Context): SharedPreferences =
         c.getSharedPreferences("steps", Context.MODE_PRIVATE)
@@ -14,10 +13,54 @@ object Store {
 
     fun stepsOn(c: Context, d: LocalDate): Int = prefs(c).getInt(key(d), 0)
 
+    // ---- Einstellungen ----
     fun goal(c: Context): Int = prefs(c).getInt("goal", 10000)
+    fun strideCm(c: Context): Int = prefs(c).getInt("stride_cm", 75)
+    fun weightKg(c: Context): Int = prefs(c).getInt("weight", 70)
+    fun reminderOn(c: Context): Boolean = prefs(c).getBoolean("rem_on", false)
+    fun reminderHour(c: Context): Int = prefs(c).getInt("rem_hour", 19)
 
-    fun setGoal(c: Context, g: Int) {
-        prefs(c).edit().putInt("goal", g).apply()
+    fun saveSettings(c: Context, goal: Int, stride: Int, weight: Int, remOn: Boolean, remHour: Int) {
+        prefs(c).edit()
+            .putInt("goal", goal)
+            .putInt("stride_cm", stride)
+            .putInt("weight", weight)
+            .putBoolean("rem_on", remOn)
+            .putInt("rem_hour", remHour)
+            .apply()
+    }
+
+    // ---- Umrechnungen ----
+    fun km(c: Context, steps: Int): Double = steps * strideCm(c) / 100000.0
+
+    // Faustformel fürs Gehen: etwa 0,5 kcal pro kg Körpergewicht und Kilometer
+    fun kcal(c: Context, steps: Int): Int = (km(c, steps) * weightKg(c) * 0.5).toInt()
+
+    // ---- Auswertung ----
+    fun allDays(c: Context): Map<LocalDate, Int> {
+        val out = HashMap<LocalDate, Int>()
+        for ((k, v) in prefs(c).all) {
+            if (k.startsWith("d_") && v is Int) {
+                try {
+                    out[LocalDate.parse(k.substring(2))] = v
+                } catch (e: Exception) {
+                }
+            }
+        }
+        return out
+    }
+
+    fun streak(c: Context, all: Map<LocalDate, Int>): Int {
+        val g = goal(c)
+        if (g <= 0) return 0
+        var d = LocalDate.now()
+        if ((all[d] ?: 0) < g) d = d.minusDays(1)
+        var n = 0
+        while ((all[d] ?: 0) >= g) {
+            n++
+            d = d.minusDays(1)
+        }
+        return n
     }
 
     // Der Schrittsensor liefert einen Gesamtzähler seit dem letzten Neustart.

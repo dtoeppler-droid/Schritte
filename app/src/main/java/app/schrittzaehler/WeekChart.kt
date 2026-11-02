@@ -11,6 +11,8 @@ import java.util.Locale
 class WeekChart(context: Context) : View(context) {
     private var days: List<Pair<String, Int>> = emptyList()
     private var goal = 10000
+    private var highlight = -1
+    private var showValues = true
     private val d = resources.displayMetrics.density
     private val sp = resources.displayMetrics.scaledDensity
     private val bar = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -21,9 +23,11 @@ class WeekChart(context: Context) : View(context) {
         pathEffect = DashPathEffect(floatArrayOf(8f * d, 6f * d), 0f)
     }
 
-    fun set(days: List<Pair<String, Int>>, goal: Int) {
+    fun set(days: List<Pair<String, Int>>, goal: Int, highlight: Int, showValues: Boolean) {
         this.days = days
         this.goal = goal
+        this.highlight = highlight
+        this.showValues = showValues
         invalidate()
     }
 
@@ -37,7 +41,7 @@ class WeekChart(context: Context) : View(context) {
         val bottom = h - 24f * d
         val maxV = maxOf(goal, days.maxOf { it.second }).toFloat()
         val slot = w / days.size
-        val bw = slot * 0.54f
+        val bw = slot * (if (showValues) 0.54f else 0.7f)
 
         val gy = bottom - goal / maxV * (bottom - top)
         ln.color = mute
@@ -47,14 +51,18 @@ class WeekChart(context: Context) : View(context) {
         days.forEachIndexed { i, (label, v) ->
             val x = i * slot + (slot - bw) / 2
             val bh = v / maxV * (bottom - top)
-            bar.color = context.getColor(if (i == days.lastIndex) R.color.acc else R.color.bar_old)
-            if (bh >= 1f) c.drawRoundRect(x, bottom - bh, x + bw, bottom, 6f * d, 6f * d, bar)
-            txt.color = ink
-            txt.textSize = 11f * sp
-            c.drawText(nf.format(v), x + bw / 2, bottom - bh - 4f * d, txt)
-            txt.color = mute
-            txt.textSize = 12f * sp
-            c.drawText(label, x + bw / 2, h - 6f * d, txt)
+            bar.color = context.getColor(if (i == highlight) R.color.acc else R.color.bar_old)
+            if (bh >= 1f) c.drawRoundRect(x, bottom - bh, x + bw, bottom, 3f * d, 3f * d, bar)
+            if (showValues) {
+                txt.color = ink
+                txt.textSize = 11f * sp
+                c.drawText(nf.format(v), x + bw / 2, bottom - bh - 4f * d, txt)
+            }
+            if (label.isNotEmpty()) {
+                txt.color = mute
+                txt.textSize = 12f * sp
+                c.drawText(label, x + bw / 2, h - 6f * d, txt)
+            }
         }
     }
 }
