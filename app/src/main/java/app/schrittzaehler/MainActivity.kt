@@ -19,6 +19,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -95,9 +96,40 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
         val mp = ViewGroup.LayoutParams.MATCH_PARENT
         val wc = ViewGroup.LayoutParams.WRAP_CONTENT
 
+        // Haupt-Container der gesamten Ansicht (mit VSA-Dark-Background)
+        val mainContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF121212.toInt()) // VSA Dark Mode Background
+        }
+
+        // --- VSA HEADER / TOP APP BAR ---
+        val topBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(16))
+            setBackgroundColor(0xFF1A1A1E.toInt()) // VSA Header Dark Tone
+        }
+
+        // VSA Geflügelter Schlüssel / Logo-Icon
+        val logoIv = ImageView(this).apply {
+            setImageResource(R.drawable.ic_vsa_wing_key)
+            imageTintList = ColorStateList.valueOf(0xFF00F2FE.toInt()) // VSA Cyan Accent
+        }
+        topBar.addView(logoIv, LinearLayout.LayoutParams(dp(28), dp(28)))
+
+        // VSA Steps Titel
+        val titleTv = tv(20f, 0xFFFFFFFF.toInt(), true).apply {
+            text = "VSA Steps"
+            setPadding(dp(12), 0, 0, 0)
+        }
+        topBar.addView(titleTv, LinearLayout.LayoutParams(0, wc, 1f))
+
+        mainContainer.addView(topBar, LinearLayout.LayoutParams(mp, wc))
+
+        // --- SCROLLVIEW FÜR DEN INHALT ---
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(32), dp(24), dp(32))
+            setPadding(dp(24), dp(24), dp(24), dp(32))
         }
 
         dateTv = tv(15f, mute)
@@ -210,7 +242,10 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
         infoTv = tv(14f, mute)
         root.addView(infoTv, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(24) })
 
-        setContentView(ScrollView(this).apply { addView(root) })
+        // ScrollView unter die TopBar in den Hauptcontainer hängen
+        mainContainer.addView(ScrollView(this).apply { addView(root) }, LinearLayout.LayoutParams(mp, mp))
+
+        setContentView(mainContainer)
     }
 
     private fun refresh() {
@@ -219,7 +254,7 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
         val all = Store.allDays(this)
         val steps = all[today] ?: 0
         val goal = Store.goal(this)
-        val pct = steps * 100 / goal
+        val pct = if (goal > 0) steps * 100 / goal else 0
 
         dateTv.text = today.dayOfWeek.getDisplayName(TextStyle.FULL, de) + ", " +
             today.dayOfMonth + ". " + today.month.getDisplayName(TextStyle.FULL, de)
@@ -350,12 +385,11 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
             .show()
     }
 
-    // ---- Sicherung: Export und Import über die Dateiauswahl von Android ----
     private fun startExport() {
         val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/json"
-            putExtra(Intent.EXTRA_TITLE, "stampfer-sicherung.json")
+            putExtra(Intent.EXTRA_TITLE, "vsa-steps-sicherung.json")
         }
         startActivityForResult(i, REQ_EXPORT)
     }
