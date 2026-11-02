@@ -13,6 +13,7 @@ class WeekChart(context: Context) : View(context) {
     private var goal = 10000
     private var highlight = -1
     private var showValues = true
+    private var compact = false
     private val d = resources.displayMetrics.density
     private val sp = resources.displayMetrics.scaledDensity
     private val bar = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -23,11 +24,15 @@ class WeekChart(context: Context) : View(context) {
         pathEffect = DashPathEffect(floatArrayOf(8f * d, 6f * d), 0f)
     }
 
-    fun set(days: List<Pair<String, Int>>, goal: Int, highlight: Int, showValues: Boolean) {
+    fun set(
+        days: List<Pair<String, Int>>, goal: Int, highlight: Int,
+        showValues: Boolean, compact: Boolean = false
+    ) {
         this.days = days
         this.goal = goal
         this.highlight = highlight
         this.showValues = showValues
+        this.compact = compact
         invalidate()
     }
 
@@ -41,7 +46,7 @@ class WeekChart(context: Context) : View(context) {
         val bottom = h - 24f * d
         val maxV = maxOf(goal, days.maxOf { it.second }).toFloat()
         val slot = w / days.size
-        val bw = slot * (if (showValues) 0.54f else 0.7f)
+        val bw = slot * (if (showValues) (if (compact) 0.62f else 0.54f) else 0.7f)
 
         val gy = bottom - goal / maxV * (bottom - top)
         ln.color = mute
@@ -55,12 +60,13 @@ class WeekChart(context: Context) : View(context) {
             if (bh >= 1f) c.drawRoundRect(x, bottom - bh, x + bw, bottom, 3f * d, 3f * d, bar)
             if (showValues) {
                 txt.color = ink
-                txt.textSize = 11f * sp
-                c.drawText(nf.format(v), x + bw / 2, bottom - bh - 4f * d, txt)
+                txt.textSize = (if (compact) 10f else 11f) * sp
+                val t = if (compact) (if (v >= 1000) "${v / 1000}k" else "$v") else nf.format(v)
+                c.drawText(t, x + bw / 2, bottom - bh - 4f * d, txt)
             }
             if (label.isNotEmpty()) {
                 txt.color = mute
-                txt.textSize = 12f * sp
+                txt.textSize = (if (compact) 10f else 12f) * sp
                 c.drawText(label, x + bw / 2, h - 6f * d, txt)
             }
         }

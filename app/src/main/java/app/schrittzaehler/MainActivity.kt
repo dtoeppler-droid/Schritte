@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -23,8 +24,10 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.Month
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -38,12 +41,20 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
     private lateinit var minTv: TextView
     private lateinit var goalTv: TextView
     private lateinit var recordsTv: TextView
+    private lateinit var yearInfoTv: TextView
     private lateinit var infoTv: TextView
+    private lateinit var yearLabel: TextView
     private lateinit var bar: ProgressBar
     private lateinit var chart: WeekChart
     private lateinit var weekBtn: Button
     private lateinit var monthBtn: Button
-    private var showMonth = false
+    private lateinit var yearBtn: Button
+    private lateinit var prevBtn: Button
+    private lateinit var nextBtn: Button
+    private lateinit var yearRow: LinearLayout
+
+    private var mode = 0 // 0 = 7 Tage, 1 = Monat, 2 = Jahr
+    private var viewYear = LocalDate.now().year
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,7 +107,6 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
         root.addView(countTv)
         root.addView(tv(16f, mute).apply { text = "Schritte heute" })
 
-        // Drei Kennzahlen nebeneinander
         val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         fun stat(label: String): TextView {
             val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -130,33 +140,72 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
         })
         root.addView(goalRow, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(8) })
 
-        // Verlauf: 7 Tage oder Monat
-        val chartRow = LinearLayout(this).apply {
+        // ---- Verlauf: 7 Tage / Monat / Jahr ----
+        root.addView(
+            tv(16f, ink, true).apply { text = "Verlauf" },
+            LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(24) }
+        )
+        val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        weekBtn = Button(this).apply { text = "7 Tage"; setOnClickListener { mode = 0; refresh() } }
+        monthBtn = Button(this).apply { text = "Monat"; setOnClickListener { mode = 1; refresh() } }
+        yearBtn = Button(this).apply { text = "Jahr"; setOnClickListener { mode = 2; refresh() } }
+        modeRow.addView(weekBtn, LinearLayout.LayoutParams(0, wc, 1f))
+        modeRow.addView(monthBtn, LinearLayout.LayoutParams(0, wc, 1f))
+        modeRow.addView(yearBtn, LinearLayout.LayoutParams(0, wc, 1f))
+        root.addView(modeRow, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(4) })
+
+        yearRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER
+            visibility = View.GONE
         }
-        chartRow.addView(tv(16f, ink, true).apply { text = "Verlauf" }, LinearLayout.LayoutParams(0, wc, 1f))
-        weekBtn = Button(this).apply {
-            text = "7 Tage"
-            setOnClickListener { showMonth = false; refresh() }
-        }
-        monthBtn = Button(this).apply {
-            text = "Monat"
-            setOnClickListener { showMonth = true; refresh() }
-        }
-        chartRow.addView(weekBtn)
-        chartRow.addView(monthBtn)
-        root.addView(chartRow, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(24) })
+        prevBtn = Button(this).apply { text = "‹"; setOnClickListener { viewYear--; refresh() } }
+        nextBtn = Button(this).apply { text = "›"; setOnClickListener { viewYear++; refresh() } }
+        yearLabel = tv(18f, ink, true).apply { gravity = Gravity.CENTER }
+        yearRow.addView(prevBtn)
+        yearRow.addView(yearLabel, LinearLayout.LayoutParams(dp(90), wc))
+        yearRow.addView(nextBtn)
+        root.addView(yearRow, LinearLayout.LayoutParams(mp, wc))
 
         chart = WeekChart(this)
         root.addView(chart, LinearLayout.LayoutParams(mp, dp(200)).apply { topMargin = dp(8) })
 
+        yearInfoTv = tv(16f, ink).apply {
+            setLineSpacing(dp(4).toFloat(), 1f)
+            visibility = View.GONE
+        }
+        root.addView(yearInfoTv, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(8) })
+
+        // ---- Rekorde ----
         root.addView(
             tv(16f, ink, true).apply { text = "Rekorde und Bilanz" },
             LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(28) }
         )
         recordsTv = tv(16f, ink).apply { setLineSpacing(dp(4).toFloat(), 1f) }
         root.addView(recordsTv, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(8) })
+
+        // ---- Datensicherung ----
+        root.addView(
+            tv(16f, ink, true).apply { text = "Datensicherung" },
+            LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(28) }
+        )
+        root.addView(
+            tv(14f, mute).apply {
+                text = "Speichert alle Tageswerte und Einstellungen in einer Datei. " +
+                    "Auf einem anderen Handy kannst du sie wieder einlesen."
+            },
+            LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(4) }
+        )
+        val backupRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        backupRow.addView(Button(this).apply {
+            text = "Exportieren"
+            setOnClickListener { startExport() }
+        }, LinearLayout.LayoutParams(0, wc, 1f))
+        backupRow.addView(Button(this).apply {
+            text = "Importieren"
+            setOnClickListener { startImport() }
+        }, LinearLayout.LayoutParams(0, wc, 1f))
+        root.addView(backupRow, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(4) })
 
         infoTv = tv(14f, mute)
         root.addView(infoTv, LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(24) })
@@ -181,21 +230,59 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
         bar.progress = minOf(100, pct)
         goalTv.text = "Ziel: " + nf.format(goal) + " · " + minOf(999, pct) + " %"
 
-        weekBtn.alpha = if (showMonth) 0.5f else 1f
-        monthBtn.alpha = if (showMonth) 1f else 0.5f
-        if (showMonth) {
-            val n = today.lengthOfMonth()
-            val list = (1..n).map {
-                val d = today.withDayOfMonth(it)
-                (if (it == 1 || it % 5 == 0) it.toString() else "") to (all[d] ?: 0)
+        weekBtn.alpha = if (mode == 0) 1f else 0.5f
+        monthBtn.alpha = if (mode == 1) 1f else 0.5f
+        yearBtn.alpha = if (mode == 2) 1f else 0.5f
+        yearRow.visibility = if (mode == 2) View.VISIBLE else View.GONE
+        yearInfoTv.visibility = if (mode == 2) View.VISIBLE else View.GONE
+
+        when (mode) {
+            0 -> {
+                val list = (6 downTo 0).map {
+                    val d = today.minusDays(it.toLong())
+                    d.dayOfWeek.getDisplayName(TextStyle.SHORT, de).removeSuffix(".") to (all[d] ?: 0)
+                }
+                chart.set(list, goal, 6, true)
             }
-            chart.set(list, goal, today.dayOfMonth - 1, false)
-        } else {
-            val list = (6 downTo 0).map {
-                val d = today.minusDays(it.toLong())
-                d.dayOfWeek.getDisplayName(TextStyle.SHORT, de).removeSuffix(".") to (all[d] ?: 0)
+            1 -> {
+                val n = today.lengthOfMonth()
+                val list = (1..n).map {
+                    val d = today.withDayOfMonth(it)
+                    (if (it == 1 || it % 5 == 0) it.toString() else "") to (all[d] ?: 0)
+                }
+                chart.set(list, goal, today.dayOfMonth - 1, false)
             }
-            chart.set(list, goal, 6, true)
+            else -> {
+                val minYear = minOf(today.year, all.keys.minOfOrNull { it.year } ?: today.year)
+                if (viewYear > today.year) viewYear = today.year
+                if (viewYear < minYear) viewYear = minYear
+                yearLabel.text = viewYear.toString()
+                prevBtn.isEnabled = viewYear > minYear
+                nextBtn.isEnabled = viewYear < today.year
+
+                val perMonth = IntArray(12)
+                for ((d, v) in all) {
+                    if (d.year == viewYear) perMonth[d.monthValue - 1] += v
+                }
+                val list = (1..12).map { m ->
+                    Month.of(m).getDisplayName(TextStyle.SHORT, de).replace(".", "").take(3) to perMonth[m - 1]
+                }
+                chart.set(list, goal * 30, if (viewYear == today.year) today.monthValue - 1 else -1, true, true)
+
+                val total = perMonth.sum()
+                if (total == 0) {
+                    yearInfoTv.text = "Für " + viewYear + " gibt es noch keine Daten."
+                } else {
+                    val bestM = perMonth.indices.maxByOrNull { perMonth[it] } ?: 0
+                    val activeDays = all.count { it.key.year == viewYear && it.value > 0 }
+                    yearInfoTv.text = "Gesamt: " + nf.format(total) + " Schritte (" +
+                        String.format(de, "%.0f", Store.km(this, total)) + " km)\n" +
+                        "Bester Monat: " + Month.of(bestM + 1).getDisplayName(TextStyle.FULL, de) +
+                        " mit " + nf.format(perMonth[bestM]) + " Schritten\n" +
+                        "Ø pro Tag mit Schritten: " + nf.format(total / maxOf(1, activeDays)) + "\n" +
+                        "Die gestrichelte Linie zeigt dein Tagesziel mal 30."
+                }
+            }
         }
 
         val best = all.maxByOrNull { it.value }
@@ -263,6 +350,56 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
             .show()
     }
 
+    // ---- Sicherung: Export und Import über die Dateiauswahl von Android ----
+    private fun startExport() {
+        val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "stampfer-sicherung.json")
+        }
+        startActivityForResult(i, REQ_EXPORT)
+    }
+
+    private fun startImport() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        startActivityForResult(i, REQ_IMPORT)
+    }
+
+    override fun onActivityResult(req: Int, res: Int, data: Intent?) {
+        super.onActivityResult(req, res, data)
+        val uri = data?.data
+        if (res != RESULT_OK || uri == null) return
+        if (req == REQ_EXPORT) {
+            try {
+                contentResolver.openOutputStream(uri, "wt")?.use {
+                    it.write(Backup.toJson(this).toByteArray(Charsets.UTF_8))
+                }
+                Toast.makeText(this, "Sicherung gespeichert.", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Das Speichern hat nicht geklappt.", Toast.LENGTH_LONG).show()
+            }
+        } else if (req == REQ_IMPORT) {
+            try {
+                val text = contentResolver.openInputStream(uri)
+                    ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+                val n = if (text.length > 5_000_000) -1 else Backup.fromJson(this, text)
+                if (n < 0) {
+                    Toast.makeText(this, "Das ist keine gültige Sicherungsdatei.", Toast.LENGTH_LONG).show()
+                } else {
+                    Reminder.schedule(this)
+                    StepWidget.refresh(this)
+                    refresh()
+                    Toast.makeText(this, "Fertig: " + n + " Tage übernommen.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Die Datei konnte nicht gelesen werden.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun hasPerm() =
         checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
 
@@ -297,5 +434,10 @@ class MainActivity : Activity(), SharedPreferences.OnSharedPreferenceChangeListe
             infoTv.text = "Ohne die Berechtigung „Körperliche Aktivität“ kann die App nicht zählen. " +
                 "Du kannst sie in den App-Einstellungen erlauben."
         }
+    }
+
+    companion object {
+        const val REQ_EXPORT = 11
+        const val REQ_IMPORT = 12
     }
 }
